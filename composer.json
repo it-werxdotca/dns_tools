@@ -1,0 +1,21 @@
+{
+  "name": "drupal/dns-tools",
+  "description": "Run DNS-related commands like whois, nslookup, traceroute, and dig.",
+  "type": "drupal-module",
+  "license": "GPL-2.0-or-later",
+  "homepage": "https://github.com/it-werxdotca/dns-tools",
+  "authors": [
+	{
+	  "name": "iT-werX",
+	  "email": "git@it-werx.ca",
+	  "role": "Maintainer"
+	}
+  ],
+  "support": {
+	"issues": "https://github.com/it-werxdotca/dns-tools/issues",
+	"source": "https://github.com/it-werxdotca/dns-tools"
+  },
+  "require": {
+	"drupal/core": "^11.0"
+  }
+}
