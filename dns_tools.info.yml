@@ -1,0 +1,7 @@
+name: 'DNS Tools'
+type: module
+description: 'Run DNS-related commands like whois, nslookup, traceroute, and dig.'
+core_version_requirement: ^11
+package: Custom
+dependencies:
+  - drupal:core

@@ -1,0 +1,15 @@
+dns_tools.autocomplete:
+  path: '/dns-tools/autocomplete'
+  defaults:
+  _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
+  requirements:
+  _permission: 'access content'
+
+dns_tools.run:
+  path: '/dns-tools/run'
+  defaults:
+  _controller: '\Drupal\dns_tools\Form\DNSToolsForm::runCommandAjax'
+  requirements:
+  _permission: 'access content'
+  options:
+  _auth: []
