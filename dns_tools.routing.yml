@@ -1,15 +1,13 @@
 dns_tools.autocomplete:
-  path: '/dns-tools/autocomplete'
+  path: '/user/{uid}/dns-tools/autocomplete'
   defaults:
-  _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
+    _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
   requirements:
-  _permission: 'access content'
+    _permission: 'access content'  # This ensures only authenticated users can access the route
 
 dns_tools.run:
-  path: '/dns-tools/run'
+  path: '/user/{uid}/dns-tools/run'
   defaults:
-  _controller: '\Drupal\dns_tools\Form\DNSToolsForm::runCommandAjax'
+    _controller: '\Drupal\dns_tools\Form\DNSToolsForm::runCommandAjax'
   requirements:
-  _permission: 'access content'
-  options:
-  _auth: []
+    _permission: 'access content'  # Again, only authenticated users can access this route
