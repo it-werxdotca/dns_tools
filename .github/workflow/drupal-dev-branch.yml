@@ -1,0 +1,23 @@
+name: Drupal 11 Dev Branch Workflow
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup PHP, with Composer and extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml
+          tools: composer, drush
+      - name: Install dependencies
+        run: composer install
+      - name: Run coding standards checks
+        run: ./vendor/bin/phpcs --config-set installed_paths vendor/drupal/coder/coder_sniffer ./vendor/bin/phpcs --standard=Drupal,DrupalPractice --extensions=php,module,install,js modules/contrib
