@@ -1,15 +1,30 @@
-dns_tools.autocomplete:
-  path: '/dns-tools/autocomplete'
+dns_tools.user_dns_tools:
+  path: '/user/{user}/dns-tools'
   defaults:
-  _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
+    _controller: '\Drupal\dns_tools\Controller\DnsToolsController::userDnsTools'
+    _title: 'DNS Tools'
   requirements:
-  _permission: 'access content'
+    _permission: 'access content'
+  user: \d+
+
+dns_tools.autocomplete:
+  path: '/user/{uid}/dns-tools/autocomplete'
+  defaults:
+    _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
+  requirements:
+    _permission: 'access content'
+  options:
+    parameters:
+      uid:
+        type: 'entity:user'
 
 dns_tools.run:
-  path: '/dns-tools/run'
-  defaults:
-  _controller: '\Drupal\dns_tools\Form\DNSToolsForm::runCommandAjax'
-  requirements:
-  _permission: 'access content'
-  options:
-  _auth: []
+        path: '/user/{uid}/dns-tools/run'
+        defaults:
+          _controller: '\Drupal\dns_tools\Controller\DNSToolsController::runCommandAjax'
+        requirements:
+          _permission: 'access content'
+        options:
+          parameters:
+            uid:
+              type: 'entity:user'

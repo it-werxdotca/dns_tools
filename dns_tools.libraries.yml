@@ -1,7 +1,5 @@
 dns_tools:
-  version: 1.x
   js:
-  js/dns_tools.js: {}
+    js/dns_tools.js: {}
   dependencies:
-  - core/drupal
-  - core/once
+    - core/drupal

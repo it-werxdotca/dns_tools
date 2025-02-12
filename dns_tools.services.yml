@@ -1,0 +1,17 @@
+services:
+  # Install service
+  dns_tools.install:
+    class: 'Drupal\dns_tools\Install\DNSToolsInstall'
+    arguments: []
+
+  # Uninstall service
+  dns_tools.uninstall:
+    class: 'Drupal\dns_tools\Uninstall\DNSToolsUninstall'
+    arguments: []
+
+  # Preprocess service for user profile
+  dns_tools.preprocess.user_profile:
+    class: 'Drupal\dns_tools\Preprocess\DNSToolsUserProfilePreprocess'
+    arguments: []
+    tags:
+      - { name: 'theme_preprocess' }

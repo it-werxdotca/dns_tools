@@ -1,0 +1,12 @@
+{# Add this file or modify an existing user.html.twig in your theme #}
+
+{% extends "user.html.twig" %}
+
+{% block tabs %}
+  {{ parent() }}
+  {% if primary_local_tasks is defined %}
+    {% for task in primary_local_tasks %}
+      <li>{{ task }}</li>
+    {% endfor %}
+  {% endif %}
+{% endblock %}

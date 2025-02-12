@@ -1,0 +1,9 @@
+<?php
+
+/**
+ * Implements hook_uninstall().
+ */
+function dns_tools_uninstall() {
+  // Call the method to remove the DNS tools link from the user profile page.
+  \Drupal::service('dns_tools.uninstall')->removeLinkFromUserProfile();
+}
