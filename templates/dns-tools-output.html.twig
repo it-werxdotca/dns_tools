@@ -1,3 +1,13 @@
 <div class="dns-tools-output">
   <pre>{{ output }}</pre>
+
+  {# Check if the user is available and render the link #}
+  {% if user %}
+    {{ dump(user) }}
+    <a href="{{ path('dns_tools.user_dns_tools', {'uid': user.id()}) }}">
+      Access DNS Tools
+    </a>
+  {% else %}
+    <p>User not found.</p>
+  {% endif %}
 </div>

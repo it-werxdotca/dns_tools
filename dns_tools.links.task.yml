@@ -1,0 +1,7 @@
+dns_tools.user_dns_tools:
+  route_name: dns_tools.user_dns_tools
+  title: 'DNS Tools'
+  base_route: entity.user.canonical
+  weight: 100
+  appears_on:
+  - entity.user.canonical

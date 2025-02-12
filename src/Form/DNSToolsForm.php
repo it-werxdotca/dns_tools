@@ -6,81 +6,58 @@ use Drupal\Core\Form\FormBase;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 use Drupal\Core\Ajax\HtmlCommand;
+use Drupal\user\Entity\User;
 
 class DNSToolsForm extends FormBase {
 
+  /**
+   * {@inheritdoc}
+   */
   public function getFormId() {
-	return 'dns_tools_form';
+    return 'dns_tools_form';
   }
 
-  public function buildForm(array $form, FormStateInterface $form_state) {
-	$form['command'] = [
-	  '#type' => 'select',
-	  '#title' => $this->t('Command'),
-	  '#options' => [
-		'whois' => 'Whois',
-		'nslookup' => 'NSLookup',
-		'traceroute' => 'Traceroute',
-		'dig' => 'Dig',
-	  ],
-	  '#required' => TRUE,
-	];
+  /**
+   * {@inheritdoc}
+   */
+  public function buildForm(array $form, FormStateInterface $form_state, User $user = NULL) {
+    $form['dns_field'] = [
+      '#type' => 'textfield',
+      '#title' => $this->t('DNS Field'),
+      '#ajax' => [
+        'callback' => '::runCommandAjax',  // This is where the method is referenced
+        'event' => 'change',               // The event that triggers the AJAX
+        'wrapper' => 'dns-result',         // The element to update with the AJAX response
+      ],
+    ];
 
-	$form['flags'] = [
-	  '#type' => 'textfield',
-	  '#title' => $this->t('Flags'),
-	  '#description' => $this->t('Enter command flags (e.g., -4 for IPv4).'),
-	  '#autocomplete_route_name' => 'dns_tools.autocomplete',
-	];
+    $form['result'] = [
+      '#type' => 'markup',
+      '#markup' => '',
+      '#prefix' => '<div id="dns-result">',  // The wrapper for AJAX
+      '#suffix' => '</div>',
+    ];
 
-	$form['target'] = [
-	  '#type' => 'textfield',
-	  '#title' => $this->t('Target'),
-	  '#description' => $this->t('Enter the target domain or IP address.'),
-	  '#required' => TRUE,
-	];
-
-	$form['submit'] = [
-	  '#type' => 'submit',
-	  '#value' => $this->t('Run Command'),
-	  '#attributes' => [
-		'class' => ['dns-tools-submit'],
-	  ],
-	];
-
-	$form['output'] = [
-	  '#type' => 'container',
-	  '#attributes' => ['id' => 'dns-tools-output'],
-	];
-
-	return $form;
+    return $form;
   }
 
+  /**
+   * AJAX callback handler.
+   */
+  public function runCommandAjax(array $form, FormStateInterface $form_state) {
+    $response = new AjaxResponse();
+
+    // Example: Update the result field with something dynamic.
+    $response->addCommand(new HtmlCommand('#dns-result', $this->t('Updated content!')));
+
+    // You can replace 'Updated content!' with dynamic content based on form state.
+    return $response;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function submitForm(array &$form, FormStateInterface $form_state) {
-	// No need for traditional submission handling since we're using AJAX.
-  }
-
-  public function runCommandAjax(array &$form, FormStateInterface $form_state) {
-	$command = $form_state->getValue('command');
-	$flags = $form_state->getValue('flags');
-	$target = $form_state->getValue('target');
-
-	$output = $this->runCommand($command, $flags, $target);
-
-	$response = new JsonResponse([
-	  'output' => render($output),
-	]);
-
-	return $response;
-  }
-
-  private function runCommand($command, $flags, $target) {
-	$full_command = "$command $flags $target";
-	$output = shell_exec($full_command);
-
-	return [
-	  '#theme' => 'dns_tools_output',
-	  '#output' => $output,
-	];
+    // Form submission logic here.
   }
 }

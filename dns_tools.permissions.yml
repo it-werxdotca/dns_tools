@@ -1,0 +1,4 @@
+access dns tools:
+  title: 'Access DNS tools'
+  description: 'Allow users to access the DNS tools form.'
+  permission: []
