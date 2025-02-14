@@ -32,4 +32,5 @@ class DNSToolsInstall {
     // Add the link to the user profile page (we will do this programmatically using preprocess).
     \Drupal::state()->set('dns_tools.user_profile_link', $link->toString());
   }
+
 }

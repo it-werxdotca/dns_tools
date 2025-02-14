@@ -2,8 +2,6 @@
 
 namespace Drupal\dns_tools\Uninstall;
 
-use Drupal\Core\State\StateInterface;
-
 /**
  * Class DNSToolsUninstall.
  *
@@ -25,4 +23,5 @@ class DNSToolsUninstall {
     // Delete the state variable that holds the DNS tools link.
     \Drupal::state()->delete('dns_tools.user_profile_link');
   }
+
 }
