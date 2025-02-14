@@ -5,26 +5,26 @@ namespace Drupal\dns_tools\Controller;
 use Drupal\Core\Controller\ControllerBase;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Drupal\user\Entity\User;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
-use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Form\FormBuilderInterface;
 use Drupal\Core\Ajax\AjaxResponse;
 
+/**
+ *
+ */
 class DnsToolsController extends ControllerBase {
 
   /**
    * Implements hook_preprocess_HOOK() for user templates.
    */
-  function dns_tools_preprocess_user_profile(&$variables) {
+  public function dns_tools_preprocess_user_profile(&$variables) {
     DNSToolsUserProfilePreprocess::preprocessUserProfile($variables);
   }
 
   /**
    * Implements hook_preprocess_HOOK() for block templates.
    */
-  function dns_tools_preprocess_block(&$variables) {
+  public function dns_tools_preprocess_block(&$variables) {
     $logger = \Drupal::logger('dns_tools');
     $logger->info('dns_tools_preprocess_block called for plugin_id: @plugin_id', ['@plugin_id' => $variables['plugin_id']]);
 
@@ -34,6 +34,9 @@ class DnsToolsController extends ControllerBase {
     }
   }
 
+  /**
+   *
+   */
   public function autocomplete() {
     $matches = [
       '-4' => 'IPv4',
@@ -45,11 +48,13 @@ class DnsToolsController extends ControllerBase {
     return new JsonResponse($matches);
   }
 
-  // Run form with ajax.
+  /**
+   * Run form with ajax.
+   */
   public function runCommandAjax($uid) {
     $form = \Drupal::formBuilder()->getForm('Drupal\dns_tools\Form\DNSToolsForm');
     $response = new AjaxResponse();
-    // Update the response with the necessary data
+    // Update the response with the necessary data.
     return $response;
   }
 
@@ -92,4 +97,5 @@ class DnsToolsController extends ControllerBase {
     // Return the DNS Tools form.
     return $this->formBuilder->getForm('Drupal\dns_tools\Form\DNSToolsForm', $user);
   }
+
 }

@@ -3,7 +3,6 @@
 namespace Drupal\dns_tools\Preprocess;
 
 use Drupal\Core\Url;
-use Drupal\Core\Logger\LoggerChannelFactoryInterface;
 
 /**
  * Class DNSToolsUserProfilePreprocess.
@@ -26,7 +25,8 @@ class DNSToolsUserProfilePreprocess {
     $user = \Drupal::routeMatch()->getParameter('user');
     if ($user) {
       $logger->info('User ID: @uid', ['@uid' => $user->id()]);
-    } else {
+    }
+    else {
       $logger->info('No user parameter found in route.');
     }
 
@@ -40,9 +40,11 @@ class DNSToolsUserProfilePreprocess {
         '#url' => $url,
         '#attributes' => ['class' => ['dns-tools-link']],
       ];
-      $variables['primary_local_tasks'][] = $link;  // Inject into primary local tasks
+      // Inject into primary local tasks.
+      $variables['primary_local_tasks'][] = $link;
       $logger->info('DNS Tools link added to primary local tasks.');
-    } else {
+    }
+    else {
       $logger->info('Current user is not viewing their own profile.');
     }
   }
