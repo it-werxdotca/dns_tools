@@ -1,0 +1,49 @@
+<table class="dns-tools-table">
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Status</th>
+      <th>Test name</th>
+      <th>Information</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Parent</td>
+      <td colspan="3">{{ parent_server|raw }}</td>
+    </tr>
+
+    {% for category, record in records %}
+      {% if record is iterable %}
+        <tr><td colspan="4" class="category-row">{{ category }}</td></tr>
+        {% for item in record %}
+          <tr>
+            <td>{{ category }}</td>
+            <td>{{ item }}</td>
+            <td></td>
+            <td></td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td>{{ category }}</td>
+          <td>{{ record }}</td>
+          <td></td>
+          <td></td>
+        </tr>
+      {% endif %}
+    {% endfor %}
+
+    <tr><td colspan="4" class="category-row">Validation Results</td></tr>
+    {% for result in validation_results %}
+      <tr>
+        {% if loop.first %}
+          <td rowspan="{{ validation_results|length }}">Validation Results</td>
+        {% endif %}
+        <td>{{ result[1] }}</td>
+        <td>{{ result[0] }}</td>
+        <td>{{ result[3] }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

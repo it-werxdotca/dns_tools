@@ -1,0 +1,40 @@
+.dns-tools-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+}
+
+.dns-tools-table th, .dns-tools-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+.dns-tools-table th {
+  background-color: #f2f2f2;
+  text-align: center;
+}
+
+.dns-tools-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.dns-tools-table tr:hover {
+  background-color: #ddd;
+}
+
+.dns-tools-table .category-row {
+  background-color: #4CAF50;
+  color: white;
+  text-align: left;
+}
+
+@media screen and (max-width: 600px) {
+  .dns-tools-table th, .dns-tools-table td {
+    display: block;
+    width: 100%;
+  }
+  .dns-tools-table tr {
+    display: block;
+    margin-bottom: 10px;
+  }
+}

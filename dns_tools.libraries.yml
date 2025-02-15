@@ -3,3 +3,6 @@ dns_tools:
     js/dns_tools.js: {}
   dependencies:
     - core/drupal
+  css:
+    theme:
+      css/dns_tools_styles.css: {}

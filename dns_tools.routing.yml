@@ -7,17 +7,6 @@ dns_tools.user_dns_tools:
     _permission: 'access content'
   user: \d+
 
-dns_tools.autocomplete:
-  path: '/user/{uid}/dns-tools/autocomplete'
-  defaults:
-    _controller: '\Drupal\dns_tools\Controller\DNSToolsController::autocomplete'
-  requirements:
-    _permission: 'access content'
-  options:
-    parameters:
-      uid:
-        type: 'entity:user'
-
 dns_tools.run:
         path: '/user/{uid}/dns-tools/run'
         defaults:

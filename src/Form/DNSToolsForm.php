@@ -11,7 +11,7 @@ use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- *
+ * Class DNSToolsForm.
  */
 class DNSToolsForm extends FormBase {
 
@@ -26,10 +26,9 @@ class DNSToolsForm extends FormBase {
    * {@inheritdoc}
    */
   public static function create(ContainerInterface $container) {
-    $instance = new static(
+    return new static(
       $container->get('current_user')
     );
-    return $instance;
   }
 
   /**
@@ -53,14 +52,30 @@ class DNSToolsForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state, ?User $user = NULL) {
+    $form['#attached']['library'][] = 'dns_tools/dns_tools';
+
+    $form['resolver'] = [
+      '#type' => 'select',
+      '#title' => $this->t('DNS Resolver'),
+      '#options' => [
+        '1.1.1.1' => $this->t('Cloudflare'),
+        '8.8.8.8' => $this->t('Google'),
+        '9.9.9.9' => $this->t('Quad9'),
+        '208.67.222.222' => $this->t('Cisco OpenDNS'),
+      ],
+      '#default_value' => '9.9.9.9',
+    ];
+
     $form['dns_field'] = [
       '#type' => 'textfield',
       '#title' => $this->t('DNS Field'),
+      '#placeholder' => 'example.com',
       '#ajax' => [
         'callback' => '::runCommandAjax',
         'event' => 'change',
         'wrapper' => 'dns-result',
       ],
+      '#element_validate' => ['::validateDomain'],
     ];
 
     $form['result'] = [
@@ -74,6 +89,16 @@ class DNSToolsForm extends FormBase {
   }
 
   /**
+   * Validate the domain input.
+   */
+  public function validateDomain(array &$element, FormStateInterface $form_state, array &$complete_form) {
+    $domain = $form_state->getValue($element['#parents']);
+    if (!preg_match('/^(?!\-)(?:[a-zA-Z0-9\-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,6}$/', $domain)) {
+      $form_state->setError($element, $this->t('Please enter a valid domain name.'));
+    }
+  }
+
+  /**
    * AJAX callback handler.
    */
   public function runCommandAjax(array $form, FormStateInterface $form_state) {
@@ -82,8 +107,15 @@ class DNSToolsForm extends FormBase {
     // Get the domain name entered by the user.
     $domain = $form_state->getValue('dns_field');
 
+    // Get the selected DNS resolver.
+    $resolver = $form_state->getValue('resolver');
+
     // Run the dig command and process the output.
-    $output = $this->runDigCommand($domain);
+    try {
+      $output = $this->runDigCommand($domain, $resolver);
+    } catch (\Exception $e) {
+      $output = $this->t('An error occurred while processing your request. Please try again.');
+    }
 
     // Update the result field with dynamic content.
     $response->addCommand(new HtmlCommand('#dns-result', $output));
@@ -94,124 +126,88 @@ class DNSToolsForm extends FormBase {
   /**
    * Executes the dig command and returns the result as HTML.
    */
-  private function runDigCommand($domain) {
+  private function runDigCommand($domain, $resolver) {
     // Escape the input domain to prevent command injection.
     $escaped_domain = escapeshellarg($domain);
 
     // Extract the TLD from the domain.
     $tld = substr(strrchr($domain, '.'), 1);
 
-    // Get the nameserver for the TLD.
-    $tld_nameserver = shell_exec("dig .$tld NS +short | head -1");
-    $tld_nameserver = $tld_nameserver !== NULL ? trim($tld_nameserver) : '';
+    // Get the parent server for the TLD.
+    $parent_server = shell_exec("dig +short $tld NS");
+    $parent_server = $parent_server !== NULL ? trim($parent_server) : '';
 
-    $parent_server = '';
-    if (!empty($tld_nameserver)) {
-      // Get the parent server (authoritative nameservers) for the domain.
-      $parent_server = shell_exec("dig @$tld_nameserver $escaped_domain NS +noall +auth");
-      $parent_server = $parent_server !== NULL ? trim($parent_server) : '';
-    }
+    // Format the parent server result.
+    $parent_server_formatted = !empty($parent_server) ? "<strong>$parent_server</strong>" : 'No parent server found.';
 
     // Run the dig command for each record type.
     $records = [
-      'A' => shell_exec("dig +short A $escaped_domain"),
-      'AAAA' => shell_exec("dig +short AAAA $escaped_domain"),
-      'MX' => shell_exec("dig +short MX $escaped_domain"),
-      'NS' => shell_exec("dig +short NS $escaped_domain"),
-      'SOA' => shell_exec("dig +short SOA $escaped_domain"),
-      'CNAME' => shell_exec("dig +short CNAME $escaped_domain"),
-      'TXT' => shell_exec("dig +short TXT $escaped_domain"),
-      'DS' => shell_exec("dig +short DS $escaped_domain"),
-      'DNSKEY' => shell_exec("dig +short DNSKEY $escaped_domain"),
+      'A' => $this->runShellCommand("dig @$resolver +short A $escaped_domain"),
+      'AAAA' => $this->runShellCommand("dig @$resolver +short AAAA $escaped_domain"),
+      'MX' => $this->runShellCommand("dig @$resolver +short MX $escaped_domain"),
+      'NS' => $this->runShellCommand("dig @$resolver +short NS $escaped_domain"),
+      'SOA' => $this->runShellCommand("dig @$resolver +short SOA $escaped_domain"),
+      'CNAME' => $this->runShellCommand("dig @$resolver +short CNAME $escaped_domain"),
+      'TXT' => $this->runShellCommand("dig @$resolver +short TXT $escaped_domain"),
+      'DS' => $this->runShellCommand("dig @$resolver +short DS $escaped_domain"),
+      'DNSKEY' => $this->runShellCommand("dig @$resolver +short DNSKEY $escaped_domain"),
+      'CAA' => $this->runShellCommand("dig @$resolver +short CAA $escaped_domain"),
+      'NSEC3PARAM' => $this->runShellCommand("dig @$resolver +short NSEC3PARAM $escaped_domain"),
+      '_DMARC' => $this->runShellCommand("dig @$resolver +short TXT _dmarc.$escaped_domain"),
+      'SPF' => $this->runShellCommand("dig @$resolver +short TXT $escaped_domain | grep 'v=spf1'"),
     ];
 
-    // Get current date and time in UTC.
-    $currentDateTime = gmdate('Y-m-d H:i:s');
+    // Process TXT records to handle multiple entries.
+    $records['TXT'] = explode("\n", trim($records['TXT']));
 
-    // Get current user's login.
-    $currentUserLogin = $this->currentUser->getAccountName();
+    // Validate DNS records.
+    $validationResults = $this->validateDnsRecords($records);
 
-    // Format the results into a table.
-    $table = '<table>';
-    $table .= '<thead><tr><th>Category</th><th>Status</th><th>Test name</th><th>Information</th></tr></thead>';
-    $table .= '<tbody>';
-
-    // Adding rows for the parent server and its records.
-    $table .= $this->addRecordRow('Parent', 'Domain name servers', $parent_server, TRUE);
-    $table .= $this->addRecordRow('Parent', 'Name servers A records', $records['A']);
-    $table .= $this->addRecordRow('Parent', 'Name servers AAAA records', $records['AAAA']);
-
-    // Adding rows for additional DNS record types.
-    $table .= $this->addRecordRow('Name servers', 'NS records from your nameservers', $records['NS'], TRUE);
-    $table .= $this->addRecordRow('Name servers', 'DNS servers responded', "All nameservers, listed at the parent server, responded.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Mismatched NS records', "All nameservers returned by the parent server are the same as the ones reported by your nameservers.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Recursive Queries', "The nameservers reported by the parent server do not allow recursive queries.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Multiple name servers', "You have at least two unique name servers.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Multiple subnets', "Your name servers are hosted on different subnets.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Public IPs for name servers', "IP addresses of your name servers are public.", FALSE, TRUE);
-    $table .= $this->addRecordRow('Name servers', 'Name servers respond by TCP', "All your name servers respond to DNS queries over TCP.", FALSE, TRUE);
-
-    // Adding rows for SOA records.
-    $table .= $this->addSoaRecordRows($records['SOA']);
-
-    $table .= '</tbody></table>';
-
-    return $table;
+    // Render the output using a Twig template.
+    return [
+      '#theme' => 'dns_tools_results',
+      '#records' => $records,
+      '#validation_results' => $validationResults,
+      '#parent_server' => $parent_server_formatted,
+    ];
   }
 
   /**
-   * Adds a row to the table with the given category, test name, and record.
+   * Executes a shell command securely.
    */
-  private function addRecordRow($category, $testName, $record, $infoIcon = FALSE, $success = FALSE) {
-    $statusIcon = $infoIcon ? '<span></span>' : ($success ? '<span></span>' : (!empty($record) ? '✔' : '✘'));
-    $recordFormatted = $this->formatRecord($record);
-
-    return "<tr>
-              <td>{$category}</td>
-              <td>{$statusIcon}</td>
-              <td>{$testName}</td>
-              <td><div><span>{$recordFormatted}</span></div></td>
-            </tr>";
-  }
-
-  /**
-   * Adds rows for the SOA records.
-   */
-  private function addSoaRecordRows($soaRecord) {
-    if (empty($soaRecord)) {
-      return $this->addRecordRow('SOA', 'SOA records', 'No SOA records found.');
+  private function runShellCommand($command) {
+    $output = [];
+    $return_var = 0;
+    exec($command, $output, $return_var);
+    if ($return_var !== 0) {
+      throw new \RuntimeException('Shell command failed: ' . implode("\n", $output));
     }
-
-    // Split the SOA record into its components.
-    $soaParts = preg_split('/\s+/', trim($soaRecord));
-    if (count($soaParts) < 7) {
-      return $this->addRecordRow('SOA', 'SOA records', 'Invalid SOA record format.');
-    }
-
-    $primaryNs = $soaParts[0];
-    $adminEmail = $soaParts[1];
-    $serial = $soaParts[2];
-    $refresh = $soaParts[3];
-    $retry = $soaParts[4];
-    $expire = $soaParts[5];
-    $defaultTtl = $soaParts[6];
-
-    $soaRows = '';
-    $soaRows .= $this->addRecordRow('SOA', 'SOA record', "Primary NS: <strong>{$primaryNs}</strong><br>DNS admin e-mail: <strong>{$adminEmail}</strong><br>Serial: <strong>{$serial}</strong><br>Refresh rate: <strong>{$refresh}</strong> (1 hours)<br>Retry rate: <strong>{$retry}</strong> (30 minutes)<br>Expire time: <strong>{$expire}</strong> (2 weeks)<br>Default TTL: <strong>{$defaultTtl}</strong> (1 days)", TRUE);
-    $soaRows .= $this->addRecordRow('SOA', 'Primary server', $primaryNs, FALSE, TRUE);
-    $soaRows .= $this->addRecordRow('SOA', 'Refresh time', "SOA refresh interval {$refresh} (1 hours) is okay.", FALSE, TRUE);
-    $soaRows .= $this->addRecordRow('SOA', 'Retry time', "SOA retry time {$retry} (30 minutes) is okay.", FALSE, TRUE);
-    $soaRows .= $this->addRecordRow('SOA', 'Expire time', "SOA expire time {$expire} (2 weeks) is okay.", FALSE, TRUE);
-    $soaRows .= $this->addRecordRow('SOA', 'Default TTL', "SOA Default TTL is used to inform resolvers for the minimum time to keep their cache, but this value is overwritten by the TTL of each record.<br><br>Default TTL {$defaultTtl} (1 days) is okay.", FALSE, TRUE);
-
-    return $soaRows;
+    return implode("\n", $output);
   }
 
   /**
-   * Formats the record output.
+   * Validates the DNS records.
    */
-  private function formatRecord($record) {
-    return !empty($record) ? nl2br($record) : 'No records found.';
+  private function validateDnsRecords($records) {
+    $validationResults = [];
+
+    // Validate SPF record.
+    $spfValid = !empty($records['SPF']) && strpos($records['SPF'], 'v=spf1') === 0;
+    $validationResults[] = ['SPF record', $spfValid ? 'Valid' : 'Invalid', $spfValid, "Ensure it starts with 'v=spf1' and includes mechanisms to specify allowed mail servers."];
+
+    // Validate DS record.
+    $dsValid = !empty($records['DS']);
+    $validationResults[] = ['DS record', $dsValid ? 'Exists' : 'Missing', $dsValid, "Ensure DS records are correctly generated and match the DNSKEY records using tools like 'dnssec-dsfromkey'."];
+
+    // Validate DNSKEY record.
+    $dnskeyValid = !empty($records['DNSKEY']);
+    $validationResults[] = ['DNSKEY record', $dnskeyValid ? 'Exists' : 'Missing', $dnskeyValid, "Ensure DNSKEY records are correctly generated and published. Regularly rotate DNSSEC keys."];
+
+    // Validate NSEC3PARAM record.
+    $nsec3paramValid = !empty($records['NSEC3PARAM']);
+    $validationResults[] = ['NSEC3PARAM record', $nsec3paramValid ? 'Exists' : 'Missing', $nsec3paramValid, "Ensure NSEC3PARAM records are correctly configured following best practices."];
+
+    return $validationResults;
   }
 
   /**
