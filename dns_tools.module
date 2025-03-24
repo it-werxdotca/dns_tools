@@ -31,7 +31,7 @@ function dns_tools_preprocess_user_profile(&$variables) {
 /**
  * Implements hook_preprocess_block().
  */
-function dns_tools_preprocess_block(&$variables) {
+/* function dns_tools_preprocess_block(&$variables) {
   $logger = \Drupal::logger('dns_tools');
   $logger->info('dns_tools_preprocess_block called for plugin_id: @plugin_id', [
     '@plugin_id' => $variables['plugin_id'],
@@ -42,3 +42,4 @@ function dns_tools_preprocess_block(&$variables) {
     \Drupal\dns_tools\Controller\DNSToolsUserProfilePreprocess::addDnsToolsLink($variables);
   }
 }
+*/

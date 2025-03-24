@@ -10,26 +10,40 @@
   <tbody>
     <tr>
       <td>Parent</td>
-      <td colspan="3">{{ parent_server|raw }}</td>
+      <td></td>
+      <td></td>
+      <td>{{ parent_server|raw }}</td>
     </tr>
 
     {% for category, record in records %}
-      {% if record is iterable %}
+      {% if record.value is iterable %}
         <tr><td colspan="4" class="category-row">{{ category }}</td></tr>
-        {% for item in record %}
+        {% for item in record.value %}
           <tr>
             <td>{{ category }}</td>
+            <td>
+              {% if record.status == 'success' %}
+                <span style="color: green;">✔️</span>
+              {% else %}
+                <span style="color: red;">❌</span>
+              {% endif %}
+            </td>
+            <td></td>
             <td>{{ item }}</td>
-            <td></td>
-            <td></td>
           </tr>
         {% endfor %}
       {% else %}
         <tr>
           <td>{{ category }}</td>
-          <td>{{ record }}</td>
+          <td>
+            {% if record.status == 'success' %}
+              <span style="color: green;">✔️</span>
+            {% else %}
+              <span style="color: red;">❌</span>
+            {% endif %}
+          </td>
           <td></td>
-          <td></td>
+          <td>{{ record.value }}</td>
         </tr>
       {% endif %}
     {% endfor %}

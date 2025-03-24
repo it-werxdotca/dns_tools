@@ -18,8 +18,8 @@ class DNSToolsUserProfilePreprocess {
    *   The variables to preprocess.
    */
   public static function addDnsToolsLink(&$variables) {
-    $logger = \Drupal::logger('dns_tools');
-    $logger->info('addDnsToolsLink called.');
+    //$logger = \Drupal::logger('dns_tools');
+    //$logger->info('addDnsToolsLink called.');
 
     // Check that the current user is viewing their own profile.
     $user = \Drupal::routeMatch()->getParameter('user');
@@ -31,7 +31,7 @@ class DNSToolsUserProfilePreprocess {
     }
 
     if ($user && \Drupal::currentUser()->id() == $user->id()) {
-      $logger->info('Current user is viewing their own profile.');
+      //$logger->info('Current user is viewing their own profile.');
       // Add a link to the DNS tools form.
       $url = Url::fromRoute('dns_tools.user_dns_tools', ['user' => $user->id()]);
       $link = [
@@ -42,7 +42,7 @@ class DNSToolsUserProfilePreprocess {
       ];
       // Inject into primary local tasks.
       $variables['primary_local_tasks'][] = $link;
-      $logger->info('DNS Tools link added to primary local tasks.');
+      //$logger->info('DNS Tools link added to primary local tasks.');
     }
     else {
       $logger->info('Current user is not viewing their own profile.');

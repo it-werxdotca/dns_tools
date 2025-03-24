@@ -9,6 +9,8 @@ use Drupal\Core\Ajax\HtmlCommand;
 use Drupal\user\Entity\User;
 use Drupal\Core\Session\AccountProxyInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
 
 /**
  * Class DNSToolsForm.
@@ -63,7 +65,7 @@ class DNSToolsForm extends FormBase {
         '9.9.9.9' => $this->t('Quad9'),
         '208.67.222.222' => $this->t('Cisco OpenDNS'),
       ],
-      '#default_value' => '9.9.9.9',
+      '#default_value' => '1.1.1.1',
     ];
 
     $form['dns_field'] = [
@@ -92,7 +94,7 @@ class DNSToolsForm extends FormBase {
    * Validate the domain input.
    */
   public function validateDomain(array &$element, FormStateInterface $form_state, array &$complete_form) {
-    $domain = $form_state->getValue($element['#parents']);
+    $domain = $form_state->getValue('dns_field');
     if (!preg_match('/^(?!\-)(?:[a-zA-Z0-9\-]{0,62}[a-zA-Z0-9]\.)+[a-zA-Z]{2,6}$/', $domain)) {
       $form_state->setError($element, $this->t('Please enter a valid domain name.'));
     }
@@ -126,90 +128,110 @@ class DNSToolsForm extends FormBase {
   /**
    * Executes the dig command and returns the result as HTML.
    */
-  private function runDigCommand($domain, $resolver) {
-    // Escape the input domain to prevent command injection.
-    $escaped_domain = escapeshellarg($domain);
+private function runDigCommand($domain, $resolver) {
+       // Validate the domain to prevent invalid input.
+       if (!filter_var($domain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+           throw new \InvalidArgumentException('Invalid domain name provided.');
+       }
 
-    // Extract the TLD from the domain.
-    $tld = substr(strrchr($domain, '.'), 1);
+       // Extract the TLD from the domain.
+       $tld = substr(strrchr($domain, '.'), 1);
 
-    // Get the parent server for the TLD.
-    $parent_server = shell_exec("dig +short $tld NS");
-    $parent_server = $parent_server !== NULL ? trim($parent_server) : '';
+       // Get the parent server for the TLD.
+       $parent_server = $this->runShellCommand(['dig', '+short', $tld, 'NS']);
+       $parent_server_formatted = !empty($parent_server) ? "<strong>$parent_server</strong>" : 'No parent server found.';
 
-    // Format the parent server result.
-    $parent_server_formatted = !empty($parent_server) ? "<strong>$parent_server</strong>" : 'No parent server found.';
+       // Run the dig command for each record type.
+       $record_types = ['A', 'AAAA', 'MX', 'NS', 'SOA', 'CNAME', 'TXT', 'DS', 'DNSKEY', 'CAA', 'NSEC3PARAM', '_DMARC', 'SPF'];
+       $records = [];
 
-    // Run the dig command for each record type.
-    $records = [
-      'A' => $this->runShellCommand("dig @$resolver +short A $escaped_domain"),
-      'AAAA' => $this->runShellCommand("dig @$resolver +short AAAA $escaped_domain"),
-      'MX' => $this->runShellCommand("dig @$resolver +short MX $escaped_domain"),
-      'NS' => $this->runShellCommand("dig @$resolver +short NS $escaped_domain"),
-      'SOA' => $this->runShellCommand("dig @$resolver +short SOA $escaped_domain"),
-      'CNAME' => $this->runShellCommand("dig @$resolver +short CNAME $escaped_domain"),
-      'TXT' => $this->runShellCommand("dig @$resolver +short TXT $escaped_domain"),
-      'DS' => $this->runShellCommand("dig @$resolver +short DS $escaped_domain"),
-      'DNSKEY' => $this->runShellCommand("dig @$resolver +short DNSKEY $escaped_domain"),
-      'CAA' => $this->runShellCommand("dig @$resolver +short CAA $escaped_domain"),
-      'NSEC3PARAM' => $this->runShellCommand("dig @$resolver +short NSEC3PARAM $escaped_domain"),
-      '_DMARC' => $this->runShellCommand("dig @$resolver +short TXT _dmarc.$escaped_domain"),
-      'SPF' => $this->runShellCommand("dig @$resolver +short TXT $escaped_domain | grep 'v=spf1'"),
-    ];
+       foreach ($record_types as $type) {
+           $command = ['dig', '+short', '@' . $resolver, $type, $domain];
+           $output = $this->runShellCommand($command);
+           $records[$type] = [
+               'value' => ($type === 'TXT') ? explode("\n", trim($output)) : [$output],
+               'status' => !empty($output) ? 'success' : 'error',
+           ];
+       }
 
-    // Process TXT records to handle multiple entries.
-    $records['TXT'] = explode("\n", trim($records['TXT']));
+       // Validate DNS records.
+       $validationResults = $this->validateDnsRecords($records);
 
-    // Validate DNS records.
-    $validationResults = $this->validateDnsRecords($records);
-
-    // Render the output using a Twig template.
-    return [
-      '#theme' => 'dns_tools_results',
-      '#records' => $records,
-      '#validation_results' => $validationResults,
-      '#parent_server' => $parent_server_formatted,
-    ];
-  }
+       // Render the output using a Twig template.
+       return [
+           '#theme' => 'dns_tools_results',
+           '#records' => $records,
+           '#validation_results' => $validationResults,
+           '#parent_server' => [
+               '#markup' => $parent_server_formatted,
+           ],
+       ];
+   }
 
   /**
    * Executes a shell command securely.
    */
-  private function runShellCommand($command) {
-    $output = [];
-    $return_var = 0;
-    exec($command, $output, $return_var);
-    if ($return_var !== 0) {
-      throw new \RuntimeException('Shell command failed: ' . implode("\n", $output));
-    }
-    return implode("\n", $output);
-  }
+private function runShellCommand(array $command) {
+       $process = new Process($command);
+       $process->run();
 
-  /**
-   * Validates the DNS records.
-   */
-  private function validateDnsRecords($records) {
-    $validationResults = [];
+       // Executes after the command finishes.
+       if (!$process->isSuccessful()) {
+           throw new ProcessFailedException($process);
+       }
 
-    // Validate SPF record.
-    $spfValid = !empty($records['SPF']) && strpos($records['SPF'], 'v=spf1') === 0;
-    $validationResults[] = ['SPF record', $spfValid ? 'Valid' : 'Invalid', $spfValid, "Ensure it starts with 'v=spf1' and includes mechanisms to specify allowed mail servers."];
+       return $process->getOutput();
+   }
 
-    // Validate DS record.
-    $dsValid = !empty($records['DS']);
-    $validationResults[] = ['DS record', $dsValid ? 'Exists' : 'Missing', $dsValid, "Ensure DS records are correctly generated and match the DNSKEY records using tools like 'dnssec-dsfromkey'."];
+   private function validateDnsRecords($records) {
+       $validationResults = [];
 
-    // Validate DNSKEY record.
-    $dnskeyValid = !empty($records['DNSKEY']);
-    $validationResults[] = ['DNSKEY record', $dnskeyValid ? 'Exists' : 'Missing', $dnskeyValid, "Ensure DNSKEY records are correctly generated and published. Regularly rotate DNSSEC keys."];
+       // Validate SPF record.
+       $spfValid = false;
+       if (isset($records['SPF']['value'])) {
+           foreach ($records['SPF']['value'] as $spfRecord) {
+               if (strpos($spfRecord, 'v=spf1') === 0) {
+                   $spfValid = true;
+                   break;
+               }
+           }
+       }
+       $validationResults[] = [
+           'SPF record',
+           $spfValid ? 'Valid' : 'Invalid',
+           $spfValid,
+           "Ensure it starts with 'v=spf1' and includes mechanisms to specify allowed mail servers."
+       ];
 
-    // Validate NSEC3PARAM record.
-    $nsec3paramValid = !empty($records['NSEC3PARAM']);
-    $validationResults[] = ['NSEC3PARAM record', $nsec3paramValid ? 'Exists' : 'Missing', $nsec3paramValid, "Ensure NSEC3PARAM records are correctly configured following best practices."];
+       // Validate DS record.
+       $dsValid = !empty($records['DS']['value']);
+       $validationResults[] = [
+           'DS record',
+           $dsValid ? 'Exists' : 'Missing',
+           $dsValid,
+           "Ensure DS records are correctly generated and match the DNSKEY records using tools like 'dnssec-dsfromkey'."
+       ];
 
-    return $validationResults;
-  }
+       // Validate DNSKEY record.
+       $dnskeyValid = !empty($records['DNSKEY']['value']);
+       $validationResults[] = [
+           'DNSKEY record',
+           $dnskeyValid ? 'Exists' : 'Missing',
+           $dnskeyValid,
+           "Ensure DNSKEY records are correctly generated and published. Regularly rotate your DNSSEC keys."
+       ];
 
+       // Validate NSEC3PARAM record.
+       $nsec3paramValid = !empty($records['NSEC3PARAM']['value']);
+       $validationResults[] = [
+           'NSEC3PARAM record',
+           $nsec3paramValid ? 'Exists' : 'Missing',
+           $nsec3paramValid,
+           "Ensure NSEC3PARAM records are correctly configured following best practices."
+       ];
+
+       return $validationResults;
+   }
   /**
    * {@inheritdoc}
    */

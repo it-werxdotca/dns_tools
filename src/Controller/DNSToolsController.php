@@ -72,19 +72,7 @@ class DnsToolsController extends ControllerBase {
     }
   }
 
-  /**
-   * Provides autocomplete suggestions.
-   */
-  public function autocomplete() {
-    $matches = [
-      '-4' => 'IPv4',
-      '-6' => 'IPv6',
-      '-a' => 'All',
-      '-t' => 'Type',
-    ];
 
-    return new JsonResponse($matches);
-  }
 
   /**
    * Implements hook_theme().

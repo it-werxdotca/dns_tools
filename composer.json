@@ -16,6 +16,6 @@
 	"source": "https://github.com/it-werxdotca/dns-tools"
   },
   "require": {
-	"drupal/core": "^11.0"
+	"drupal/core": "^11.1.5"
   }
 }
