@@ -1,0 +1,29 @@
+.dns-tools-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dns-tools-table th, .dns-tools-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+
+.dns-tools-table th {
+  background-color: #f4f4f4;
+}
+
+.category-row {
+  background-color: #f0f0f0;
+  font-weight: bold;
+}
+
+.dns-tools-table td span {
+  font-size: 18px;
+}
+
+.dns-tools-table td[colspan="4"] {
+  text-align: center;
+  font-weight: bold;
+  background-color: #e9ecef;
+}

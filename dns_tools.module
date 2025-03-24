@@ -1,0 +1,45 @@
+<?php
+
+/**
+ * @file
+ * Implements Drupal hooks for dns_tools module.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function dns_tools_theme() {
+  return [
+    'dns_tools_results' => [
+      'variables' => [
+        'records' => [],
+        'validation_results' => [],
+        'parent_server' => '',
+      ],
+      'template' => 'dns_tools_results',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_preprocess_user_profile().
+ */
+function dns_tools_preprocess_user_profile(&$variables) {
+  \Drupal\dns_tools\Controller\DNSToolsUserProfilePreprocess::preprocessUserProfile($variables);
+}
+
+/**
+ * Implements hook_preprocess_block().
+ */
+/* function dns_tools_preprocess_block(&$variables) {
+  $logger = \Drupal::logger('dns_tools');
+  $logger->info('dns_tools_preprocess_block called for plugin_id: @plugin_id', [
+    '@plugin_id' => $variables['plugin_id'],
+  ]);
+
+  if ($variables['plugin_id'] == 'local_tasks_block:primary') {
+    $logger->info('Preprocessing primary local tasks block.');
+    \Drupal\dns_tools\Controller\DNSToolsUserProfilePreprocess::addDnsToolsLink($variables);
+  }
+}
+*/
